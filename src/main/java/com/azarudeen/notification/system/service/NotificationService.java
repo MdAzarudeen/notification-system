@@ -5,10 +5,12 @@ import com.azarudeen.notification.system.dto.NotificationResponse;
 import com.azarudeen.notification.system.dto.UpdateNotificationRequest;
 import com.azarudeen.notification.system.entity.Notification;
 import com.azarudeen.notification.system.enums.NotificationStatus;
+import com.azarudeen.notification.system.event.NotificationCreatedEvent;
 import com.azarudeen.notification.system.exception.NotificationNotFoundException;
 import com.azarudeen.notification.system.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,8 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationMapper notificationMapper;
+    private final NotificationProcessingService notificationProcessingService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public NotificationResponse createNotification(CreateNotificationRequest request) {
@@ -39,7 +43,7 @@ public class NotificationService {
         Notification savedNotification = notificationRepository.save(notification);
 
         log.info("Notification created successfully with id: {}", savedNotification.getId());
-
+        eventPublisher.publishEvent(new NotificationCreatedEvent(savedNotification.getId()));
         return notificationMapper.toResponse(savedNotification);
     }
 
@@ -105,5 +109,27 @@ public class NotificationService {
         notificationRepository.delete(notification);
 
         log.info("Notification deleted successfully with id: {}", id);
+    }
+
+    @Transactional
+    public void retryNotification(Long id) {
+
+        Notification notification = notificationRepository.findById(id)
+                .orElseThrow(() -> new NotificationNotFoundException(id));
+
+        if (notification.getStatus() != NotificationStatus.FAILED) {
+            throw new IllegalStateException(
+                    "Only failed notifications can be retried"
+            );
+        }
+        notification.setRetryCount(0);
+        notification.setStatus(NotificationStatus.PENDING);
+        notificationRepository.save(notification);
+
+        eventPublisher.publishEvent(
+                new NotificationCreatedEvent(notification.getId())
+        );
+
+        log.info("Retry requested for notification id: {}", notification.getId());
     }
 }

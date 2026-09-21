@@ -54,4 +54,12 @@ public class NotificationController {
         notificationService.deleteNotification(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/retry")
+    public ResponseEntity<Void> retryNotification(@PathVariable Long id) {
+
+        notificationService.retryNotification(id);
+
+        return ResponseEntity.accepted().build();
+    }
 }

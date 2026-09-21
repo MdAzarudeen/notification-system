@@ -43,6 +43,10 @@ public class Notification {
     @Column(nullable = false)
     private NotificationStatus status;
 
+    @Column(name = "retry_count", nullable = false)
+    @Builder.Default
+    private int retryCount = 0;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }
