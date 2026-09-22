@@ -5,15 +5,23 @@ import com.azarudeen.notification.system.dto.NotificationResponse;
 import com.azarudeen.notification.system.dto.UpdateNotificationRequest;
 import com.azarudeen.notification.system.entity.Notification;
 import com.azarudeen.notification.system.enums.NotificationStatus;
+import com.azarudeen.notification.system.enums.NotificationType;
 import com.azarudeen.notification.system.event.NotificationCreatedEvent;
 import com.azarudeen.notification.system.exception.NotificationNotFoundException;
 import com.azarudeen.notification.system.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import static com.azarudeen.notification.system.repository.NotificationSpecification.hasStatus;
+import static com.azarudeen.notification.system.repository.NotificationSpecification.hasType;
+import static com.azarudeen.notification.system.repository.NotificationSpecification.hasUserId;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -131,5 +139,46 @@ public class NotificationService {
         );
 
         log.info("Retry requested for notification id: {}", notification.getId());
+    }
+
+    public List<NotificationResponse> getNotificationsByUserId(Long userId) {
+        return notificationRepository.findByUserId(userId)
+                .stream()
+                .map(notificationMapper::toResponse)
+                .toList();
+    }
+
+    public List<NotificationResponse> getNotificationsByStatus(NotificationStatus status) {
+        return notificationRepository.findByStatus(status)
+                .stream()
+                .map(notificationMapper::toResponse)
+                .toList();
+    }
+
+    public List<NotificationResponse> getNotificationsByType(NotificationType type) {
+        return notificationRepository.findByType(type)
+                .stream()
+                .map(notificationMapper::toResponse)
+                .toList();
+    }
+
+    public Page<NotificationResponse> getNotifications(Pageable pageable) {
+        return notificationRepository.findAll(pageable)
+                .map(notificationMapper::toResponse);
+    }
+
+    public Page<NotificationResponse> filterNotifications(
+            Long userId,
+            NotificationStatus status,
+            NotificationType type,
+            Pageable pageable) {
+
+        Specification<Notification> specification = Specification
+                .where(hasUserId(userId))
+                .and(hasStatus(status))
+                .and(hasType(type));
+
+        return notificationRepository.findAll(specification, pageable)
+                .map(notificationMapper::toResponse);
     }
 }

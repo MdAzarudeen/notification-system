@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 @Table(
         name = "notifications",
         indexes = {
-                @Index(name = "idx_notification_user_id", columnList = "user_id")
+                @Index(name = "idx_notification_user_id", columnList = "user_id"),
+                @Index(name = "idx_notification_status", columnList = "status"),
+                @Index(name = "idx_notification_type", columnList = "type")
         }
 )
 @Getter
@@ -33,14 +35,14 @@ public class Notification {
     private Long userId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 10)
     private NotificationType type;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 10)
     private NotificationStatus status;
 
     @Column(name = "retry_count", nullable = false)
