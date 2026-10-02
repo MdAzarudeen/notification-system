@@ -5,6 +5,8 @@ import com.azarudeen.notification.system.enums.NotificationStatus;
 import com.azarudeen.notification.system.enums.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long>,
@@ -15,4 +17,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByStatus(NotificationStatus status);
 
     List<Notification> findByType(NotificationType type);
+
+    Optional<Notification> findByIdempotencyKey(String idempotencyKey);
 }

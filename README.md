@@ -75,7 +75,6 @@
 - Proper API response structure
 - API error standards
 - Idempotency
-- Concurrency considerations
 
 ## Phase 7 — Redis & Kafka
 

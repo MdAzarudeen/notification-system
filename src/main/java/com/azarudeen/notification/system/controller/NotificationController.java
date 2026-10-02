@@ -25,13 +25,23 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @PostMapping
-    public ResponseEntity<NotificationResponse> createNotification(
-            @Valid @RequestBody CreateNotificationRequest request) {
-
+    public ResponseEntity<String> createNotification(
+            @Valid @RequestBody CreateNotificationRequest request,
+            @RequestHeader("Idempotency-Key") String idempotencyKey) {
+        boolean created = notificationService.createNotification(
+                request,
+                idempotencyKey
+        );
+        if (!created) {
+            return ResponseEntity
+                    .ok("Notification already processed");
+        }
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(notificationService.createNotification(request));
+                .body("Notification created successfully");
+
     }
+
 
     @GetMapping
     public ResponseEntity<List<NotificationResponse>> getAllNotifications() {
@@ -56,17 +66,18 @@ public class NotificationController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteNotification(@PathVariable Long id) {
+    public ResponseEntity<String> deleteNotification(@PathVariable Long id) {
         notificationService.deleteNotification(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok("Notification deleted successfully");
     }
 
     @PostMapping("/{id}/retry")
-    public ResponseEntity<Void> retryNotification(@PathVariable Long id) {
+    public ResponseEntity<String> retryNotification(@PathVariable Long id) {
 
         notificationService.retryNotification(id);
 
-        return ResponseEntity.accepted().build();
+        return ResponseEntity.accepted()
+                .body("Notification retry initiated successfully");
     }
 
     @GetMapping("/user/{userId}")

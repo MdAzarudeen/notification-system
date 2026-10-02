@@ -7,6 +7,7 @@ import com.azarudeen.notification.system.entity.Notification;
 import com.azarudeen.notification.system.enums.NotificationStatus;
 import com.azarudeen.notification.system.enums.NotificationType;
 import com.azarudeen.notification.system.event.NotificationCreatedEvent;
+import com.azarudeen.notification.system.exception.IdempotencyKeyConflictException;
 import com.azarudeen.notification.system.exception.NotificationNotFoundException;
 import com.azarudeen.notification.system.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,24 +37,47 @@ public class NotificationService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public NotificationResponse createNotification(CreateNotificationRequest request) {
-
+    public boolean createNotification(
+            CreateNotificationRequest request,
+            String idempotencyKey) {
         log.info("Creating notification for userId: {}", request.userId());
+        Notification existingNotification = notificationRepository
+                .findByIdempotencyKey(idempotencyKey)
+                .orElse(null);
+        if (existingNotification != null) {
+            if (!isSameRequest(existingNotification, request)) {
+                throw new IdempotencyKeyConflictException(
+                        "Idempotency key already used for a different request"
+                );}
+            log.info("Duplicate request detected for idempotency key: {}", idempotencyKey);
+            return false;
+        }
 
         Notification notification = Notification.builder()
                 .userId(request.userId())
+                .idempotencyKey(idempotencyKey)
                 .type(request.type())
                 .message(request.message())
                 .status(NotificationStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
-
         Notification savedNotification = notificationRepository.save(notification);
-
-        log.info("Notification created successfully with id: {}", savedNotification.getId());
-        eventPublisher.publishEvent(new NotificationCreatedEvent(savedNotification.getId()));
-        return notificationMapper.toResponse(savedNotification);
+        log.info(
+                "Notification created successfully with id: {}",
+                savedNotification.getId()
+        );
+        eventPublisher.publishEvent(
+                new NotificationCreatedEvent(savedNotification.getId())
+        );
+        return true;
     }
+
+    private boolean isSameRequest(Notification existingNotification, CreateNotificationRequest request) {
+        return existingNotification.getUserId().equals(request.userId())
+                && existingNotification.getType() == request.type()
+                && existingNotification.getMessage().equals(request.message());
+    }
+
 
     @Transactional(readOnly = true)
     public List<NotificationResponse> getAllNotifications() {
