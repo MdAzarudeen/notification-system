@@ -17,40 +17,24 @@ public class NotificationRetryService {
     public NotificationRetryService(
             NotificationRepository notificationRepository,
             NotificationRetryProperties notificationRetryProperties) {
-
         this.notificationRepository = notificationRepository;
         this.notificationRetryProperties = notificationRetryProperties;
     }
 
     public boolean handleFailure(Notification notification, Exception exception) {
-
         notification.setRetryCount(notification.getRetryCount() + 1);
-
         if (notification.getRetryCount() < notificationRetryProperties.getMaxAttempts()) {
-
             notification.setStatus(NotificationStatus.PENDING);
             notificationRepository.save(notification);
-
-            log.warn(
-                    "Notification processing failed with id: {}, retryCount: {}. Retrying...",
-                    notification.getId(),
-                    notification.getRetryCount(),
-                    exception
-            );
-
+            log.warn("Notification processing failed with id: {}, retryCount: {}. Retrying...",
+                    notification.getId(), notification.getRetryCount(), exception);
             return true;
         }
-
         notification.setStatus(NotificationStatus.FAILED);
         notificationRepository.save(notification);
-
         log.error(
                 "Notification processing failed with id: {}, retryCount: {}. Maximum retry attempts reached.",
-                notification.getId(),
-                notification.getRetryCount(),
-                exception
-        );
-
+                notification.getId(), notification.getRetryCount(), exception);
         return false;
     }
 }

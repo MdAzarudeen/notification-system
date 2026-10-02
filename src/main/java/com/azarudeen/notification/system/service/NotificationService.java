@@ -17,8 +17,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import static com.azarudeen.notification.system.repository.NotificationSpecification.hasStatus;
 import static com.azarudeen.notification.system.repository.NotificationSpecification.hasType;
@@ -37,38 +35,23 @@ public class NotificationService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public boolean createNotification(
-            CreateNotificationRequest request,
-            String idempotencyKey) {
+    public boolean createNotification(CreateNotificationRequest request, String idempotencyKey) {
         log.info("Creating notification for userId: {}", request.userId());
         Notification existingNotification = notificationRepository
-                .findByIdempotencyKey(idempotencyKey)
-                .orElse(null);
+                .findByIdempotencyKey(idempotencyKey).orElse(null);
         if (existingNotification != null) {
             if (!isSameRequest(existingNotification, request)) {
-                throw new IdempotencyKeyConflictException(
-                        "Idempotency key already used for a different request"
-                );}
+                throw new IdempotencyKeyConflictException("Idempotency key already used for a different request");}
             log.info("Duplicate request detected for idempotency key: {}", idempotencyKey);
             return false;
         }
-
         Notification notification = Notification.builder()
-                .userId(request.userId())
-                .idempotencyKey(idempotencyKey)
-                .type(request.type())
-                .message(request.message())
-                .status(NotificationStatus.PENDING)
-                .createdAt(LocalDateTime.now())
-                .build();
+                .userId(request.userId()).idempotencyKey(idempotencyKey)
+                .type(request.type()).message(request.message())
+                .status(NotificationStatus.PENDING).createdAt(LocalDateTime.now()).build();
         Notification savedNotification = notificationRepository.save(notification);
-        log.info(
-                "Notification created successfully with id: {}",
-                savedNotification.getId()
-        );
-        eventPublisher.publishEvent(
-                new NotificationCreatedEvent(savedNotification.getId())
-        );
+        log.info("Notification created successfully with id: {}", savedNotification.getId());
+        eventPublisher.publishEvent(new NotificationCreatedEvent(savedNotification.getId()));
         return true;
     }
 
@@ -81,128 +64,85 @@ public class NotificationService {
 
     @Transactional(readOnly = true)
     public List<NotificationResponse> getAllNotifications() {
-
         log.info("Fetching all notifications");
-
-        return notificationRepository.findAll()
-                .stream()
-                .map(notificationMapper::toResponse)
-                .toList();
+        return notificationRepository.findAll().stream().map(notificationMapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public NotificationResponse getNotificationById(Long id) {
-
         log.info("Fetching notification with id: {}", id);
-
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("Notification not found with id: {}", id);
                     return new NotificationNotFoundException(id);
                 });
-
         return notificationMapper.toResponse(notification);
     }
 
     @Transactional
-    public NotificationResponse updateNotification(
-            Long id,
-            UpdateNotificationRequest request) {
-
+    public NotificationResponse updateNotification(Long id, UpdateNotificationRequest request) {
         log.info("Updating notification with id: {}", id);
-
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("Notification not found with id: {}", id);
                     return new NotificationNotFoundException(id);
                 });
-
         notification.setType(request.type());
         notification.setMessage(request.message());
-
         Notification updatedNotification = notificationRepository.save(notification);
-
         log.info("Notification updated successfully with id: {}", id);
-
         return notificationMapper.toResponse(updatedNotification);
     }
 
     @Transactional
     public void deleteNotification(Long id) {
-
         log.info("Deleting notification with id: {}", id);
-
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("Notification not found with id: {}", id);
                     return new NotificationNotFoundException(id);
                 });
-
         notificationRepository.delete(notification);
-
         log.info("Notification deleted successfully with id: {}", id);
     }
 
     @Transactional
     public void retryNotification(Long id) {
-
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new NotificationNotFoundException(id));
-
         if (notification.getStatus() != NotificationStatus.FAILED) {
-            throw new IllegalStateException(
-                    "Only failed notifications can be retried"
-            );
+            throw new IllegalStateException("Only failed notifications can be retried");
         }
         notification.setRetryCount(0);
         notification.setStatus(NotificationStatus.PENDING);
         notificationRepository.save(notification);
-
-        eventPublisher.publishEvent(
-                new NotificationCreatedEvent(notification.getId())
-        );
-
+        eventPublisher.publishEvent(new NotificationCreatedEvent(notification.getId()));
         log.info("Retry requested for notification id: {}", notification.getId());
     }
 
     public List<NotificationResponse> getNotificationsByUserId(Long userId) {
         return notificationRepository.findByUserId(userId)
-                .stream()
-                .map(notificationMapper::toResponse)
-                .toList();
+                .stream().map(notificationMapper::toResponse).toList();
     }
 
     public List<NotificationResponse> getNotificationsByStatus(NotificationStatus status) {
-        return notificationRepository.findByStatus(status)
-                .stream()
-                .map(notificationMapper::toResponse)
-                .toList();
+        return notificationRepository.findByStatus(status).stream()
+                .map(notificationMapper::toResponse).toList();
     }
 
     public List<NotificationResponse> getNotificationsByType(NotificationType type) {
-        return notificationRepository.findByType(type)
-                .stream()
-                .map(notificationMapper::toResponse)
-                .toList();
+        return notificationRepository.findByType(type).stream()
+                .map(notificationMapper::toResponse).toList();
     }
 
     public Page<NotificationResponse> getNotifications(Pageable pageable) {
-        return notificationRepository.findAll(pageable)
-                .map(notificationMapper::toResponse);
+        return notificationRepository.findAll(pageable).map(notificationMapper::toResponse);
     }
 
     public Page<NotificationResponse> filterNotifications(
-            Long userId,
-            NotificationStatus status,
-            NotificationType type,
-            Pageable pageable) {
-
+            Long userId, NotificationStatus status, NotificationType type, Pageable pageable) {
         Specification<Notification> specification = Specification
-                .where(hasUserId(userId))
-                .and(hasStatus(status))
-                .and(hasType(type));
-
-        return notificationRepository.findAll(specification, pageable)
-                .map(notificationMapper::toResponse);
+                .where(hasUserId(userId)).and(hasStatus(status)).and(hasType(type));
+        return notificationRepository.findAll(specification, pageable).map(notificationMapper::toResponse);
     }
 }

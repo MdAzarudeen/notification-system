@@ -25,23 +25,14 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @PostMapping
-    public ResponseEntity<String> createNotification(
-            @Valid @RequestBody CreateNotificationRequest request,
+    public ResponseEntity<String> createNotification(@Valid @RequestBody CreateNotificationRequest request,
             @RequestHeader("Idempotency-Key") String idempotencyKey) {
-        boolean created = notificationService.createNotification(
-                request,
-                idempotencyKey
-        );
+        boolean created = notificationService.createNotification(request, idempotencyKey);
         if (!created) {
-            return ResponseEntity
-                    .ok("Notification already processed");
+            return ResponseEntity.ok("Notification already processed");
         }
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body("Notification created successfully");
-
+        return ResponseEntity.status(HttpStatus.CREATED).body("Notification created successfully");
     }
-
 
     @GetMapping
     public ResponseEntity<List<NotificationResponse>> getAllNotifications() {
@@ -49,20 +40,14 @@ public class NotificationController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<NotificationResponse> getNotificationById(
-            @PathVariable Long id) {
-
+    public ResponseEntity<NotificationResponse> getNotificationById(@PathVariable Long id) {
         return ResponseEntity.ok(notificationService.getNotificationById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<NotificationResponse> updateNotification(
-            @PathVariable Long id,
+    public ResponseEntity<NotificationResponse> updateNotification(@PathVariable Long id,
             @Valid @RequestBody UpdateNotificationRequest request) {
-
-        return ResponseEntity.ok(
-                notificationService.updateNotification(id, request)
-        );
+        return ResponseEntity.ok(notificationService.updateNotification(id, request));
     }
 
     @DeleteMapping("/{id}")
@@ -73,38 +58,28 @@ public class NotificationController {
 
     @PostMapping("/{id}/retry")
     public ResponseEntity<String> retryNotification(@PathVariable Long id) {
-
         notificationService.retryNotification(id);
-
-        return ResponseEntity.accepted()
-                .body("Notification retry initiated successfully");
+        return ResponseEntity.accepted().body("Notification retry initiated successfully");
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<NotificationResponse>> getNotificationsByUserId(
-            @PathVariable Long userId) {
-
+    public ResponseEntity<List<NotificationResponse>> getNotificationsByUserId(@PathVariable Long userId) {
         return ResponseEntity.ok(notificationService.getNotificationsByUserId(userId));
     }
 
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<NotificationResponse>> getNotificationsByStatus(
-            @PathVariable NotificationStatus status) {
-
+    public ResponseEntity<List<NotificationResponse>> getNotificationsByStatus(@PathVariable NotificationStatus status) {
         return ResponseEntity.ok(notificationService.getNotificationsByStatus(status));
     }
 
     @GetMapping("/type/{type}")
-    public ResponseEntity<List<NotificationResponse>> getNotificationsByType(
-            @PathVariable NotificationType type) {
-
+    public ResponseEntity<List<NotificationResponse>> getNotificationsByType(@PathVariable NotificationType type) {
         return ResponseEntity.ok(notificationService.getNotificationsByType(type));
     }
 
     @GetMapping("/page")
     public ResponseEntity<Page<NotificationResponse>> getNotifications(
             @PageableDefault(size = 10, sort = "createdAt") Pageable pageable) {
-
         return ResponseEntity.ok(notificationService.getNotifications(pageable));
     }
 
@@ -114,14 +89,7 @@ public class NotificationController {
             @RequestParam(required = false) NotificationStatus status,
             @RequestParam(required = false) NotificationType type,
             @PageableDefault(size = 10, sort = "createdAt") Pageable pageable) {
-
         return ResponseEntity.ok(
-                notificationService.filterNotifications(
-                        userId,
-                        status,
-                        type,
-                        pageable
-                )
-        );
+            notificationService.filterNotifications(userId,status,type,pageable));
     }
 }
